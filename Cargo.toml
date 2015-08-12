@@ -1,0 +1,14 @@
+
+[dependencies]
+toml = "*"
+yaml-rust = "*"
+
+[package]
+authors = ["storedbox <storedbox@outlook.com>"]
+name = "cargo-yaml"
+version = "1.0.0"
+
+[profile]
+
+[profile.release]
+lto = true
