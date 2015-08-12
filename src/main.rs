@@ -58,7 +58,7 @@ fn yvalue_to_tvalue(yaml: &Yaml) -> Toml {
         &Yaml::Array(ref array) => Toml::Array(yarray_to_tarray(&array)),
         &Yaml::Hash(ref hash) => Toml::Table(yhash_to_ttable(&hash)),
         &Yaml::Alias(..) => unimplemented!(),
-        &Yaml::Null => Toml::Array(toml::Array::new()),
+        &Yaml::Null => Toml::Table(toml::Table::new()),
         &Yaml::BadValue => panic!(),
     }
 }
