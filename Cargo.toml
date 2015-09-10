@@ -1,3 +1,4 @@
+# Auto-generated from `Cargo.yaml`
 
 [dependencies]
 toml = "*"
