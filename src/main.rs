@@ -1,4 +1,3 @@
-// extern crate libc;
 extern crate toml;
 extern crate yaml_rust;
 
@@ -11,7 +10,6 @@ use std::path::Path;
 use std::process::{Command,exit};
 use std::str::FromStr;
 
-// use libc::{c_char,c_int,execv};
 use toml::Value as Toml;
 use yaml_rust::{YamlLoader, yaml};
 use yaml_rust::yaml::Yaml;
