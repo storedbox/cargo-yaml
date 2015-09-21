@@ -26,8 +26,7 @@ fn read_file<P: AsRef<Path>>(path: P) -> Option<String> {
 
 fn write_file<P: AsRef<Path>, S: Display>(path: P, content: S) -> Option<()> {
     File::create(path).ok().and_then(|mut file| {
-        file.write(b"# Auto-generated from `Cargo.yaml`\n").ok();
-        file.write_fmt(format_args!("{}", content)).ok()
+        file.write_fmt(format_args!("# Auto-generated from `Cargo.yaml`\n{}", content)).ok()
     })
 }
 
