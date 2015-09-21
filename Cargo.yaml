@@ -6,6 +6,7 @@ package:
     authors:
       - David Huffman <storedbox@outlook.com>
     license: MIT/Apache-2.0
+    readme: README.md
     homepage: https://gitlab.com/storedbox/cargo-yaml/
     repository: https://gitlab.com/storedbox/cargo-yaml.git
 dependencies:
