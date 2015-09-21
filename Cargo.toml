@@ -9,6 +9,7 @@ authors = ["David Huffman <storedbox@outlook.com>"]
 homepage = "https://gitlab.com/storedbox/cargo-yaml/"
 license = "MIT/Apache-2.0"
 name = "cargo-yaml"
+readme = "README.md"
 repository = "https://gitlab.com/storedbox/cargo-yaml.git"
 version = "1.2.0"
 
