@@ -1,13 +1,13 @@
 extern crate toml;
 extern crate yaml_rust;
 
-use std::env::args_os;
+use std::env;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
-use std::process::{Command,exit};
+use std::process::{self, Command};
 
 use toml::Value as Toml;
 use yaml_rust::YamlLoader;
@@ -37,7 +37,11 @@ fn yaml_to_toml(yaml: Yaml) -> Toml {
         Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
         Yaml::Boolean(b) => Toml::Boolean(b),
         Yaml::Array(a) => Toml::Array(a.into_iter().map(yaml_to_toml).collect()),
-        Yaml::Hash(h) => Toml::Table(h.into_iter().map(|(k, v)| (String::from(k.as_str().unwrap()), yaml_to_toml(v))).collect()),
+        Yaml::Hash(h) => Toml::Table(h.into_iter()
+                                      .map(|(k, v)| {
+                                          (String::from(k.as_str().unwrap()), yaml_to_toml(v))
+                                      })
+                                      .collect()),
         Yaml::Alias(..) => unimplemented!(),
         Yaml::Null => Toml::Table(toml::Table::new()),
         Yaml::BadValue => panic!(),
@@ -45,13 +49,13 @@ fn yaml_to_toml(yaml: Yaml) -> Toml {
 }
 
 fn main() {
-    let raw_yaml = read_file("Cargo.yaml").unwrap();
+    let raw_yaml = read_file("Cargo.yaml").expect("`Cargo.yaml` not found in working directory");
     let yaml = YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone();
     write_file("Cargo.toml", yaml_to_toml(yaml));
 
-    let args: Vec<_> = args_os().skip(2).collect();
+    let args: Vec<_> = env::args_os().skip(2).collect();
     if !args.is_empty() {
         let status = Command::new("cargo").args(&args).status().unwrap();
-        exit(status.code().unwrap_or(status.signal().unwrap_or(0)));
+        process::exit(status.code().unwrap_or(status.signal().unwrap_or(0)));
     }
 }
