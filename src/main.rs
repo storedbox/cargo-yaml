@@ -8,10 +8,9 @@ use std::io::{Read, Write};
 use std::os::unix::process::ExitStatusExt;
 use std::path::Path;
 use std::process::{Command,exit};
-use std::str::FromStr;
 
 use toml::Value as Toml;
-use yaml_rust::{YamlLoader, yaml};
+use yaml_rust::YamlLoader;
 use yaml_rust::yaml::Yaml;
 
 fn read_file<P: AsRef<Path>>(path: P) -> Option<String> {
@@ -25,47 +24,31 @@ fn read_file<P: AsRef<Path>>(path: P) -> Option<String> {
     })
 }
 
-fn write_file<P: AsRef<Path>, S: Display>(path: P, content: &S) -> Option<()> {
+fn write_file<P: AsRef<Path>, S: Display>(path: P, content: S) -> Option<()> {
     File::create(path).ok().and_then(|mut file| {
         file.write(b"# Auto-generated from `Cargo.yaml`\n").ok();
         file.write_fmt(format_args!("{}", content)).ok()
     })
 }
 
-fn yarray_to_tarray(yaml: &yaml::Array) -> toml::Array {
-    let mut toml = toml::Array::new();
-    for val in yaml.iter() {
-        toml.push(yvalue_to_tvalue(val));
-    }
-    toml
-}
-
-fn yhash_to_ttable(yaml: &yaml::Hash) -> toml::Table {
-    let mut toml = toml::Table::new();
-    for (key, val) in yaml.iter() {
-        toml.insert(String::from(key.as_str().unwrap()), yvalue_to_tvalue(val));
-    }
-    toml
-}
-
-fn yvalue_to_tvalue(yaml: &Yaml) -> Toml {
+fn yaml_to_toml(yaml: Yaml) -> Toml {
     match yaml {
-        &Yaml::Real(ref float) => Toml::Float(f64::from_str(float).unwrap()),
-        &Yaml::Integer(int) => Toml::Integer(int),
-        &Yaml::String(ref string) => Toml::String(string.clone()),
-        &Yaml::Boolean(bool) => Toml::Boolean(bool),
-        &Yaml::Array(ref array) => Toml::Array(yarray_to_tarray(&array)),
-        &Yaml::Hash(ref hash) => Toml::Table(yhash_to_ttable(&hash)),
-        &Yaml::Alias(..) => unimplemented!(),
-        &Yaml::Null => Toml::Table(toml::Table::new()),
-        &Yaml::BadValue => panic!(),
+        Yaml::String(s) => Toml::String(s),
+        Yaml::Integer(i) => Toml::Integer(i),
+        Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
+        Yaml::Boolean(b) => Toml::Boolean(b),
+        Yaml::Array(a) => Toml::Array(a.into_iter().map(yaml_to_toml).collect()),
+        Yaml::Hash(h) => Toml::Table(h.into_iter().map(|(k, v)| (String::from(k.as_str().unwrap()), yaml_to_toml(v))).collect()),
+        Yaml::Alias(..) => unimplemented!(),
+        Yaml::Null => Toml::Table(toml::Table::new()),
+        Yaml::BadValue => panic!(),
     }
 }
 
 fn main() {
     let raw_yaml = read_file("Cargo.yaml").unwrap();
-    let yaml = &YamlLoader::load_from_str(&raw_yaml).unwrap()[0];
-    write_file("Cargo.toml", &yvalue_to_tvalue(&yaml));
+    let yaml = YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone();
+    write_file("Cargo.toml", yaml_to_toml(yaml));
 
     let args: Vec<_> = args_os().skip(2).collect();
     if !args.is_empty() {
