@@ -37,11 +37,11 @@ fn yaml_to_toml(yaml: Yaml) -> Toml {
         Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
         Yaml::Boolean(b) => Toml::Boolean(b),
         Yaml::Array(a) => Toml::Array(a.into_iter().map(yaml_to_toml).collect()),
-        Yaml::Hash(h) => Toml::Table(h.into_iter()
-                                      .map(|(k, v)| {
-                                          (String::from(k.as_str().unwrap()), yaml_to_toml(v))
-                                      })
-                                      .collect()),
+        Yaml::Hash(h) => {
+            Toml::Table(h.into_iter()
+                         .map(|(k, v)| (String::from(k.as_str().unwrap()), yaml_to_toml(v)))
+                         .collect())
+        }
         Yaml::Alias(..) => unimplemented!(),
         Yaml::Null => Toml::Table(toml::Table::new()),
         Yaml::BadValue => panic!(),
