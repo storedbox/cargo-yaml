@@ -10,7 +10,7 @@ package:
     # repository: https://gitlab.com/storedbox/cargo-yaml.git
     description: >
         A drop-in Cargo subcommand which generates a `Cargo.toml` manifest from a given YAML
-        equivalent.
+        template.
 dependencies:
     toml: 0.1.24
     yaml-rust: 0.2.2

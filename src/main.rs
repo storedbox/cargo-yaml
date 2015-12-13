@@ -3,7 +3,6 @@ extern crate yaml_rust;
 
 use std::fs::File;
 use std::io::{self, Read, Write};
-use std::path::Path;
 
 use toml::Value as Toml;
 use yaml_rust::YamlLoader;
@@ -11,7 +10,7 @@ use yaml_rust::yaml::Yaml;
 
 mod opts;
 
-use self::opts::{Options, Verbosity};
+use opts::{Options, Verbosity};
 
 fn read_file(path: &str) -> io::Result<String> {
     File::open(path).and_then(|mut file| {
@@ -42,6 +41,17 @@ fn yaml_to_toml(yaml: Yaml) -> Toml {
     }
 }
 
+fn process_template(path: &str) -> Yaml {
+    let raw_yaml = read_file(path)
+                       .map_err(|err| {
+                           panic!("cannot read from the given template path `{}`: {}",
+                                  path,
+                                  err)
+                       })
+                       .unwrap();
+    YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
+}
+
 fn main() {
     let opts = Options::from_args();
     if !opts.show_usage {
@@ -51,26 +61,9 @@ fn main() {
         if opts.verbosity == Verbosity::Verbose {
             println!("     Reading YAML from `{}`", opts.template_path)
         }
-        let yaml = {
-            let raw_yaml = read_file(&opts.template_path)
-                               .map_err(|err| {
-                                   panic!("cannot read from the given template path `{}`: {}",
-                                          opts.template_path,
-                                          err)
-                               })
-                               .unwrap();
-            YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
-        };
-        let raw_toml = {
-            let template_filename = Path::new(&opts.template_path)
-                                        .file_name()
-                                        .unwrap()
-                                        .to_str()
-                                        .unwrap();
-            format!("# Auto-generated from `{}`\n{}",
-                    template_filename,
-                    yaml_to_toml(yaml))
-        };
+        let yaml = process_template(&opts.template_path);
+        let toml = yaml_to_toml(yaml);
+        let raw_toml = format!("# Auto-generated from `{}`\n{}", opts.template_path, toml);
         if opts.verbosity == Verbosity::Verbose {
             println!("     Writing TOML to `{}`", opts.manifest_path);
         }
@@ -82,6 +75,6 @@ fn main() {
             })
             .unwrap();
     } else {
-        println!("\n{}", include_str!("../usage.txt"));
+        println!("{}", include_str!("../usage.txt"));
     }
 }
