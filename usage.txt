@@ -1,6 +1,6 @@
 cargo-yaml v2.0.0
 David Huffman <storedbox@outlook.com>
-Generate a Cargo.toml manifest from a YAML equivalent
+Generate a Cargo.toml manifest from an YAML template
 
 USAGE:
     cargo yaml [options] [Cargo.yaml]

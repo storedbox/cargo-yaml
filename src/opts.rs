@@ -111,6 +111,7 @@ impl OptionsBuffer {
     fn set_string(mut self, val: String) -> Self {
         match self.awaiting {
             Some(OptionsBufferAwaiting::Color) => {
+                println!("WARNING: the `--color` option is currently ignored");
                 let color = match &val[..] {
                     "always" | "auto" => Color::Always,
                     "never" => Color::Never,
