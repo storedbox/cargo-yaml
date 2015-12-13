@@ -1,6 +1,6 @@
-cargo-yaml v2.0.0-devel
+cargo-yaml v2.0.0
 David Huffman <storedbox@outlook.com>
-Generate a Cargo.toml manifest from a given Cargo.yaml file
+Generate a Cargo.toml manifest from a YAML equivalent
 
 USAGE:
     cargo yaml [options] [Cargo.yaml]

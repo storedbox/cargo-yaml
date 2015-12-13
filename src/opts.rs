@@ -1,139 +1,134 @@
 use std::env;
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct Options {
     pub color: Color,
     pub verbosity: Verbosity,
     pub manifest_path: String,
     pub template_path: String,
+    pub show_usage: bool,
 }
 
 impl Options {
     pub fn new() -> Self {
         Options {
-            color: Color::Auto,
+            color: Color::Always,
             verbosity: Verbosity::Normal,
             manifest_path: "Cargo.toml".to_string(),
             template_path: "Cargo.yaml".to_string(),
+            show_usage: false,
         }
     }
 
-    pub fn from_args() -> Option<Self> {
-        let mut builder = OptionsBuilder::new();
-        for arg in env::args().skip(2) {
-            builder.push_arg(arg);
-        }
-        builder.build()
+    pub fn from_args() -> Self {
+        env::args()
+            .skip(2)
+            .fold(OptionsBuffer::default(), |buf, arg| {
+                match &arg[..] {
+                    "-h" | "--help" => buf.set_show_usage(),
+                    "-v" | "--verbose" => buf.set_verbosity(Verbosity::Verbose),
+                    "-q" | "--quiet" => buf.set_verbosity(Verbosity::Quiet),
+                    "--color" => buf.set_awaiting(OptionsBufferAwaiting::Color),
+                    "--manifest-path" => buf.set_awaiting(OptionsBufferAwaiting::ManifestPath),
+                    _ => buf.set_string(arg),
+                }
+            })
+            .build()
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Color {
     Always,
-    Auto,
     Never,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Verbosity {
     Normal,
     Verbose,
     Quiet,
 }
 
-#[derive(Clone, Copy, PartialEq)]
-enum OptionsBuilderState {
-    Ready,
-    Finished,
-    AwaitingColor,
-    AwaitingManifestPath,
+#[derive(Clone, Copy, Debug)]
+enum OptionsBufferAwaiting {
+    Color,
+    ManifestPath,
 }
 
-pub struct OptionsBuilder {
-    state: OptionsBuilderState,
-    show_usage: bool,
+#[derive(Debug, Default)]
+struct OptionsBuffer {
     color: Option<Color>,
     verbosity: Option<Verbosity>,
     manifest_path: Option<String>,
     template_path: Option<String>,
+    show_usage: bool,
+    awaiting: Option<OptionsBufferAwaiting>,
 }
 
-macro_rules! try_set {
-    ( $s:expr => $opt:expr => $val:expr ) => {
-        if $opt.is_none() {
-            $opt = Some($val);
-        } else {
-            $s.show_usage = true;
-        }
-    }
-}
-
-impl OptionsBuilder {
-    pub fn new() -> Self {
-        OptionsBuilder {
-            state: OptionsBuilderState::Ready,
-            show_usage: false,
-            color: Default::default(),
-            verbosity: Default::default(),
-            manifest_path: Default::default(),
-            template_path: Default::default(),
-        }
-    }
-
-    pub fn build(self) -> Option<Options> {
-        if self.show_usage || self.state == OptionsBuilderState::AwaitingColor || self.state == OptionsBuilderState::AwaitingManifestPath {
-            return None;
-        }
-        let mut opts = Options::new();
+impl OptionsBuffer {
+    fn build(self) -> Options {
+        let mut new = Options::new();
         if let Some(color) = self.color {
-            opts.color = color;
+            new.color = color;
         }
         if let Some(verbosity) = self.verbosity {
-            opts.verbosity = verbosity;
+            new.verbosity = verbosity;
         }
         if let Some(manifest_path) = self.manifest_path {
-            opts.manifest_path = manifest_path;
+            new.manifest_path = manifest_path;
         }
         if let Some(template_path) = self.template_path {
-            opts.template_path = template_path;
+            new.template_path = template_path;
         }
-        Some(opts)
+        new.show_usage = self.show_usage;
+        new
     }
 
-    pub fn push_arg(&mut self, arg: String) -> &mut Self {
-        use self::OptionsBuilderState::*;
-        match self.state {
-            Finished => self.show_usage = true,
-            Ready => self.push_new(arg),
-            AwaitingColor => self.push_color(arg),
-            AwaitingManifestPath => {
-                self.state = OptionsBuilderState::Ready;
-                try_set!(self => self.manifest_path => arg)
-            }
-        };
+    fn set<T>(usage: &mut bool, opt: &mut Option<T>, val: T) {
+        if opt.is_none() {
+            *opt = Some(val);
+        } else {
+            *usage = true;
+        }
+    }
+
+    fn set_show_usage(mut self) -> Self {
+        self.show_usage = true;
         self
     }
 
-    fn push_new(&mut self, arg: String) {
-        match &arg[..] {
-            "-h" | "--help" => self.show_usage = true,
-            "-v" | "--verbose" => try_set!(self => self.verbosity => Verbosity::Verbose),
-            "-q" | "--quiet" => try_set!(self => self.verbosity => Verbosity::Quiet),
-            "--manifest-path" => self.state = OptionsBuilderState::AwaitingManifestPath,
-            "--color" => self.state = OptionsBuilderState::AwaitingColor,
-            _ => {
-                try_set!(self => self.template_path => arg);
-                self.state = OptionsBuilderState::Finished;
-            }
-        };
+    fn set_verbosity(mut self, verbosity: Verbosity) -> Self {
+        OptionsBuffer::set(&mut self.show_usage, &mut self.verbosity, verbosity);
+        self
     }
 
-    fn push_color(&mut self, arg: String) {
-        self.state = OptionsBuilderState::Ready;
-        match &arg[..] {
-            "always" => try_set!(self => self.color => Color::Always),
-            "auto" => try_set!(self => self.color => Color::Auto),
-            "never" => try_set!(self => self.color => Color::Never),
-            _ => self.show_usage = true,
-        };
+    fn set_awaiting(mut self, state: OptionsBufferAwaiting) -> Self {
+        OptionsBuffer::set(&mut self.show_usage, &mut self.awaiting, state);
+        self
+    }
+
+    fn set_string(mut self, val: String) -> Self {
+        match self.awaiting {
+            Some(OptionsBufferAwaiting::Color) => {
+                let color = match &val[..] {
+                    "always" | "auto" => Color::Always,
+                    "never" => Color::Never,
+                    _ => panic!(),
+                };
+                self.awaiting = None;
+                OptionsBuffer::set(&mut self.show_usage, &mut self.color, color);
+                self
+            }
+            Some(OptionsBufferAwaiting::ManifestPath) => {
+                self.awaiting = None;
+                OptionsBuffer::set(&mut self.show_usage, &mut self.manifest_path, val);
+                self
+            }
+            None => {
+                OptionsBuffer::set(&mut self.show_usage, &mut self.template_path, val);
+                self
+            }
+        }
     }
 }

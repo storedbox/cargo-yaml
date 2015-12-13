@@ -6,8 +6,7 @@ yaml-rust = "0.2.2"
 
 [package]
 authors = ["David Huffman <storedbox@outlook.com>"]
-description = "A drop-in Cargo subcommand which generates a valid `Cargo.toml` manifest from its equivalent `Cargo.yaml`\n"
-homepage = "https://gitlab.com/storedbox/cargo-yaml/"
+description = "A drop-in Cargo subcommand which generates a `Cargo.toml` manifest from a given YAML equivalent.\n"
 license = "MIT/Apache-2.0"
 name = "cargo-yaml"
 version = "2.0.0-devel"
