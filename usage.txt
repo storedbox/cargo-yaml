@@ -1,0 +1,13 @@
+cargo-yaml v2.0.0-devel
+David Huffman <storedbox@outlook.com>
+Generate a Cargo.toml manifest from a given Cargo.yaml file
+
+USAGE:
+    cargo yaml [options] [Cargo.yaml]
+
+FLAGS:
+    -h, --help              Print this message
+    --manifest-path PATH    Output path for the generated manifest
+    -v, --verbose           Use verbose output
+    -q, --quiet             No output printed to stdout
+    --color WHEN            Coloring: auto, always, never
