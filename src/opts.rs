@@ -81,7 +81,7 @@ impl OptionsBuffer {
         if let Some(template_path) = self.template_path {
             new.template_path = template_path;
         }
-        new.show_usage = self.show_usage;
+        new.show_usage = self.show_usage || self.awaiting.is_some();
         new
     }
 
