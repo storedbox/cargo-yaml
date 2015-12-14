@@ -1,0 +1,14 @@
+image: storedbox/rust:nightly
+
+stages:
+  - build
+
+debug build:
+    stage: build
+    script:
+      - cargo build --verbose
+
+release build:
+    stage: build
+    script:
+      - cargo build --release --verbose
