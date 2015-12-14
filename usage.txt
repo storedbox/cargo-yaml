@@ -1,4 +1,4 @@
-cargo-yaml v2.0.0
+cargo-yaml v2.0.1
 David Huffman <storedbox@outlook.com>
 Generate a Cargo.toml manifest from an YAML template
 
