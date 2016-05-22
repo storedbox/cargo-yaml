@@ -6,14 +6,14 @@ stages:
 build-debug:
     stage: build
     tags:
-      - rust
+      - docker
     script:
       - cargo build --verbose
 
 build-release:
     stage: build
     tags:
-      - rust
+      - docker
     script:
       - cargo build --release --verbose
 
