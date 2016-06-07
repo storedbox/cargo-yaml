@@ -1,9 +1,9 @@
 [root]
 name = "cargo-yaml"
-version = "2.0.1"
+version = "2.1.0-prealpha"
 dependencies = [
- "toml 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "yaml-rust 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "yaml-rust 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -13,7 +13,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "toml"
-version = "0.1.24"
+version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -21,6 +21,6 @@ dependencies = [
 
 [[package]]
 name = "yaml-rust"
-version = "0.2.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
