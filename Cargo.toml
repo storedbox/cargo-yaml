@@ -1,6 +1,7 @@
 # Auto-generated from `Cargo.yaml`
 
 [dependencies]
+term = "0.4.4"
 toml = "0.1.30"
 yaml-rust = "0.3.3"
 
