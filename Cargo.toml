@@ -1,17 +1,23 @@
 # Auto-generated from `Cargo.yaml`
 
 [dependencies]
-term = "0.4.4"
-toml = "0.1.30"
-yaml-rust = "0.3.3"
+bitflags = "*"
+getopts = "*"
+lazy_static = "*"
+log = "*"
+term = "*"
+toml = "*"
+yaml-rust = "*"
 
 [package]
 authors = ["David Huffman <storedbox@outlook.com>"]
 description = "A drop-in Cargo subcommand which generates a Cargo.toml manifest from an YAML template."
+homepage = "https://gitlab.com/storedbox/cargo-yaml/"
 keywords = ["cargo", "file", "generate", "generator", "manifest", "subcommand", "toml", "yaml"]
 license = "MIT/Apache-2.0"
 name = "cargo-yaml"
 publish = false
+repository = "https://gitlab.com/storedbox/cargo-yaml.git"
 version = "2.1.0-prealpha"
 
 [profile]

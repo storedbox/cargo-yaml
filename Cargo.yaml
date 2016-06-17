@@ -8,8 +8,8 @@ package:
     - David Huffman <storedbox@outlook.com>
   license: MIT/Apache-2.0
   # readme: README.md
-  # homepage: https://gitlab.com/storedbox/cargo-yaml/
-  # repository: https://gitlab.com/storedbox/cargo-yaml.git
+  homepage: https://gitlab.com/storedbox/cargo-yaml/
+  repository: https://gitlab.com/storedbox/cargo-yaml.git
   description:
     A drop-in Cargo subcommand which generates a Cargo.toml manifest from an YAML template.
   keywords:
@@ -22,9 +22,15 @@ package:
     - toml
     - yaml
 dependencies:
-  term: 0.4.4
-  toml: 0.1.30
-  yaml-rust: 0.3.3
+  bitflags: '*'
+  getopts: '*'
+  # glob: '*'
+  lazy_static: '*'
+  log: '*'
+  # regex: '*'
+  term: '*'
+  toml: '*'
+  yaml-rust: '*'
 profile:
   bench:
     lto: true
