@@ -3,7 +3,8 @@ David Huffman <storedbox@outlook.com>
 Generate a Cargo.toml manifest from an YAML template
 
 USAGE:
-    cargo yaml [options] [-- [cargo args...]]
+    cargo yaml [<options>] [--] [<cargo subcommand> [<args>...]]
+    cargo yaml [<options>] [-- [<cargo options>]]
 
 FLAGS:
     -h --help                   Print this message
