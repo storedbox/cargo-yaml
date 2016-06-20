@@ -104,7 +104,7 @@ fn main() {
         debug!("Mapping YAML constructs to TOML equivilents");
         let toml = map_yaml_to_toml(yaml);
         let raw_toml = format!("# Auto-generated from `{}`\n{}", opts.template_path, toml);
-        debug!("Forcefully serializing TOML AST to text");
+        debug!("Serializing TOML AST to plaintext TOML");
         write_file(&opts.manifest_path, &raw_toml)
             .map_err(|err| {
                 error!("Cannot write to manifest file `{}`: {}",
