@@ -90,6 +90,7 @@ fn process_template(path: &str) -> Yaml {
             panic!()
         })
         .unwrap();
+    debug!("Forcefully deserializing data as an YAML AST");
     YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
 }
 
@@ -103,6 +104,7 @@ fn main() {
         debug!("Mapping YAML constructs to TOML equivilents");
         let toml = map_yaml_to_toml(yaml);
         let raw_toml = format!("# Auto-generated from `{}`\n{}", opts.template_path, toml);
+        debug!("Forcefully serializing TOML AST to text");
         write_file(&opts.manifest_path, &raw_toml)
             .map_err(|err| {
                 error!("Cannot write to manifest file `{}`: {}",

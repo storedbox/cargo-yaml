@@ -26,13 +26,13 @@ impl Logger {
 
     fn split_args(args: &fmt::Arguments) -> (String, String) {
         let args = format!("{}", args);
-        let iter = args.split(' ');
+        let args = args.split(' ');
         let head = {
-            let raw_head = iter.clone().next().unwrap();
+            let raw_head = args.clone().next().unwrap();
             let padding = (raw_head.len()..12).map(|_| ' ').collect::<String>();
             format!("{}{}", padding, raw_head)
         };
-        let body = iter.skip(1).fold(String::new(), |acc, s| format!("{} {}", acc, s));
+        let body = args.skip(1).fold(String::new(), |acc, s| format!("{} {}", acc, s));
         (head, body)
     }
 
@@ -77,7 +77,7 @@ impl Logger {
     fn write_debug(&self, record: &LogRecord, fgcolor: Color) -> io::Result<()> {
         let (args_head, args_body) = Self::split_args(record.args());
 
-        let mut out = self.stderr.borrow_mut();
+        let mut out = self.stdout.borrow_mut();
         let reset = out.supports_reset();
 
         if reset {
@@ -144,7 +144,7 @@ pub fn init(filtering_level: LogLevelFilter) -> Result<(), log::SetLoggerError> 
         max_log_level.set(filtering_level);
         Box::new(Logger::with_filter(filtering_level).unwrap())
     });
-    trace!("logger initialized with filter level '{}'",
+    trace!("logger initialized with filtering level '{}'",
            filtering_level);
     result_buffer
 }
