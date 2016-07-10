@@ -90,7 +90,7 @@ fn process_template(path: &str) -> Yaml {
             panic!()
         })
         .unwrap();
-    debug!("Forcefully deserializing data as an YAML AST");
+    debug!("Attempting deserialization of data as an YAML AST");
     YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
 }
 
