@@ -1,19 +1,41 @@
 %YAML 1.2
 ---
 package:
-    name: cargo-yaml
-    version: 2.0.1
-    authors:
-      - David Huffman <storedbox@outlook.com>
-    license: MIT/Apache-2.0
-    # homepage: https://gitlab.com/storedbox/cargo-yaml/
-    # repository: https://gitlab.com/storedbox/cargo-yaml.git
-    description: >
-        A drop-in Cargo subcommand to generate a Cargo.toml manifest from an YAML template.
+  name: cargo-yaml
+  version: 2.1.0-prealpha
+  publish: false
+  authors:
+    - David Huffman <storedbox@outlook.com>
+  license: MIT/Apache-2.0
+  # readme: README.md
+  homepage: https://gitlab.com/storedbox/cargo-yaml/
+  repository: https://gitlab.com/storedbox/cargo-yaml.git
+  description:
+    A drop-in Cargo subcommand which generates a Cargo.toml manifest from an YAML template.
+  keywords:
+    - cargo
+    - file
+    - generate
+    - generator
+    - manifest
+    - subcommand
+    - toml
+    - yaml
 dependencies:
-    toml: 0.1.24
-    yaml-rust: 0.2.2
+  bitflags: '*'
+  getopts: '*'
+  # glob: '*'
+  lazy_static: '*'
+  log: '*'
+  # regex: '*'
+  term: '*'
+  toml: '*'
+  yaml-rust: '*'
 profile:
-    release:
-        lto: true
+  bench:
+    lto: true
+  release:
+    lto: true
+  test:
+    lto: true
 ...
