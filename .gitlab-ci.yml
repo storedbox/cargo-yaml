@@ -1,19 +1,18 @@
 image: storedbox/rust:nightly
 
 stages:
-  - build
+- build
 
-build-debug:
-    stage: build
-    tags:
-      - docker
-    script:
-      - cargo build --verbose
+Debug Build:
+  stage: build
+  tags:
+  - docker
+  script:
+  - cargo build --verbose
 
-build-release:
-    stage: build
-    tags:
-      - docker
-    script:
-      - cargo build --release --verbose
-
+Release Build:
+  stage: build
+  tags:
+  - docker
+  script:
+  - cargo build --verbose --release
