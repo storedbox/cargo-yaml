@@ -17,10 +17,11 @@ unsafe impl Sync for Logger {}
 
 impl Logger {
     fn with_filter(filtering_level: LogLevelFilter) -> term::Result<Self> {
+        use term::{Error, stderr, stdout};
         Ok(Logger {
             filtering_level: filtering_level,
-            stderr: RefCell::new(try!(term::stderr().ok_or(term::Error::NotSupported))),
-            stdout: RefCell::new(try!(term::stdout().ok_or(term::Error::NotSupported))),
+            stderr: RefCell::new(try!(stderr().ok_or(Error::NotSupported))),
+            stdout: RefCell::new(try!(stdout().ok_or(Error::NotSupported))),
         })
     }
 
