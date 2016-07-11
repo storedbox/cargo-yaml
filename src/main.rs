@@ -60,7 +60,7 @@ fn write_file(path: &str, content: &str) -> io::Result<()> {
 
 fn map_yaml_to_toml(yaml: Yaml) -> Toml {
     trace!("Mapping template field `Yaml::{:?}`", yaml);
-    match yaml.clone() {
+    match yaml {
         Yaml::String(s) => Toml::String(s),
         Yaml::Integer(i) => Toml::Integer(i),
         Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
