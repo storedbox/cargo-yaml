@@ -95,9 +95,12 @@ fn process_template(path: &str) -> Yaml {
 }
 
 fn main() {
-    logger::init(log::LogLevelFilter::Trace).unwrap();
-
     let opts = Options::from_args();
+    logger::init(match opts.verbosity {
+        Verbosity::Normal => log::LogLevelFilter::Info,
+        Verbosity::Verbose => log::LogLevelFilter::Debug,
+        Verbosity::Quiet => log::LogLevelFilter::Error,
+    }).unwrap();
     if !opts.show_usage {
         info!("Generating new Cargo manifest");
         let yaml = process_template(&opts.template_path);
