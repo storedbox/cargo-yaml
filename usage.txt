@@ -1,15 +1,14 @@
-cargo-yaml v2.1.0-prealpha
+cargo-yaml
 David Huffman <storedbox@outlook.com>
 Generate a Cargo.toml manifest from an YAML template
 
-USAGE:
-    cargo yaml [<options>] [--] [<cargo subcommand> [<args>...]]
-    cargo yaml [<options>] [-- [<cargo options>]]
+Usage:
+    cargo-yaml [options] [- | <template-path>] [-- <subcommand> [<args>...]]
 
-FLAGS:
-    -h --help                   Print this message
-    -o --manifest-path <PATH>   Output path for the generated manifest
-    -i --template-path <PATH>   Input path for the template file
-    -v --verbose                Use verbose output
-    -q --quiet                  No output printed to stdout
-    -c --color <WHEN>           Coloring: auto, always, never
+Options:
+    -h, --help            Display this message
+    --manifest-path PATH  Output path for the generated manifest file
+    -V, --version         Print version info and exit
+    -v, --verbose         Use verbose output
+    -q, --quiet           No output printed to stdout
+    --color WHEN          Coloring: auto, always, never

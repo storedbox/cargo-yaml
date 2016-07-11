@@ -23,7 +23,8 @@ package:
     - yaml
 dependencies:
   bitflags: '*'
-  getopts: '*'
+  docopt: '*'
+  # getopts: '*'
   # glob: '*'
   lazy_static: '*'
   log: '*'
