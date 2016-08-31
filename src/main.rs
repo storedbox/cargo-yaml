@@ -1,80 +1,191 @@
+extern crate docopt;
+extern crate rustc_serialize;
 extern crate toml;
 extern crate yaml_rust;
 
-use std::fs::File;
-use std::io::{self, Read, Write};
+// TODO: Fix arg detection at runtime
+const USAGE: &'static str = "
+cargo-yaml
+David Huffman <storedbox@outlook.com>
+Generate a Cargo.toml manifest from an YAML template
 
-use toml::Value as Toml;
-use yaml_rust::YamlLoader;
-use yaml_rust::yaml::Yaml;
+Usage:
+    cargo-yaml [options] [--] [<command> [<args>...]]
 
-mod opts;
+Options:
+    -h, --help                Display this message
+    -m, --manifest-path PATH  Output path for the generated manifest file
+    -t, --template-path PATH  Path to the YAML template; can be `-` for stdin
+    -V, --version             Print version info and exit
+    -v, --verbose             Use verbose output
+    -q, --quiet               No output printed to stdout
+    --color WHEN              Coloring: auto, always, never
+";
 
-use opts::{Options, Verbosity};
+mod opt {
+    use std::fmt::Arguments as FmtArgs;
+    use std::path::PathBuf;
 
-fn read_file(path: &str) -> io::Result<String> {
-    File::open(path).and_then(|mut file| {
-        let mut content = String::new();
-        file.read_to_string(&mut content).map(|_| content)
-    })
-}
+    #[derive(Debug, RustcDecodable)]
+    pub struct Args {
+        arg_args: Vec<String>,
+        arg_command: Option<String>,
+        arg_manifest_path: Option<String>,
+        arg_template_path: Option<String>,
+        arg_color: Option<Color>,
+        flag_quiet: bool,
+        flag_verbose: u32,
+        flag_version: bool,
+    }
 
-fn write_file(path: &str, content: &str) -> io::Result<()> {
-    File::create(path).and_then(|mut file| file.write_all(content.as_bytes()).map(|_| ()))
-}
-
-fn yaml_to_toml(yaml: Yaml) -> Toml {
-    match yaml {
-        Yaml::String(s) => Toml::String(s),
-        Yaml::Integer(i) => Toml::Integer(i),
-        Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
-        Yaml::Boolean(b) => Toml::Boolean(b),
-        Yaml::Array(a) => Toml::Array(a.into_iter().map(yaml_to_toml).collect()),
-        Yaml::Hash(h) => {
-            Toml::Table(h.into_iter()
-                         .map(|(k, v)| (String::from(k.as_str().unwrap()), yaml_to_toml(v)))
-                         .collect())
+    impl Args {
+        pub fn sub_argv(&self) -> Vec<String> {
+            // TODO: Locate cargo's executable using our ppid rather than the PATH
+            // TODO: When called by cargo what's up with all the cmdline args? Use argv[0]
+            //       rather than the above method of location if possible
+            if let Some(ref cmd) = self.arg_command {
+                let mut argv = vec!["cargo".to_string(), cmd.clone()];
+                argv.append(&mut self.arg_args.to_vec());
+                argv
+            } else {
+                vec![]
+            }
         }
-        Yaml::Alias(..) => unimplemented!(),
-        Yaml::Null => Toml::Table(toml::Table::new()),
-        Yaml::BadValue => panic!(),
+
+        pub fn manifest_path(&self) -> PathBuf {
+            PathBuf::from(self.arg_manifest_path.clone().unwrap_or_else(|| "Cargo.toml".to_string()))
+        }
+
+        pub fn template_path(&self) -> PathBuf {
+            // TODO: Allow for Cargo.yml auto-detection and possibly other variations
+            PathBuf::from(self.arg_template_path.clone().unwrap_or_else(|| "Cargo.yaml".to_string()))
+        }
+
+        pub fn color(&self) -> Color {
+            self.arg_color.clone().unwrap_or_default()
+        }
+
+        pub fn verbosity(&self) -> Verbosity {
+            match (self.flag_quiet, self.flag_verbose) {
+                (true, _) => Verbosity::Quiet,
+                (false, 0) => Verbosity::Normal,
+                (false, _) => Verbosity::Verbose,
+            }
+        }
+    }
+
+    #[derive(Clone, Debug, RustcDecodable)]
+    pub enum Color {
+        Auto,
+        Always,
+        Never,
+    }
+
+    impl Color {
+        pub fn is_enabled(&self) -> bool {
+            use self::Color::*;
+            match self {
+                &Auto | &Always => true,
+                &Never => false,
+            }
+        }
+    }
+
+    impl Default for Color {
+        fn default() -> Self {
+            Color::Auto
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub enum Verbosity {
+        Quiet,
+        Normal,
+        Verbose,
+    }
+
+    impl Verbosity {
+        pub fn if_normal(&self, args: FmtArgs) {
+            if self != &Verbosity::Quiet {
+                println!("{}", args);
+            }
+        }
+
+        pub fn if_verbose(&self, args: FmtArgs) {
+            if self == &Verbosity::Verbose {
+                println!("{}", args);
+            }
+        }
+    }
+
+    impl Default for Verbosity {
+        fn default() -> Self {
+            Verbosity::Normal
+        }
     }
 }
 
-fn process_template(path: &str) -> Yaml {
-    let raw_yaml = read_file(path)
-                       .map_err(|err| {
-                           panic!("cannot read from the given template path `{}`: {}",
-                                  path,
-                                  err)
-                       })
-                       .unwrap();
-    YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
+mod gen {
+    use std::fs::File;
+    use std::io::{self, Read, Write};
+    use std::path::Path;
+    use toml::Table as TomlTable;
+    use toml::Value as Toml;
+    use yaml_rust::yaml::Yaml;
+    use yaml_rust::YamlLoader;
+
+    pub fn read_file(path: &Path) -> io::Result<String> {
+        File::open(path).and_then(|mut file| {
+            let mut content = String::new();
+            file.read_to_string(&mut content).map(|_| content)
+        })
+    }
+
+    pub fn write_file(path: &Path, content: &str) -> io::Result<()> {
+        File::create(path).and_then(|mut file| file.write_all(content.as_bytes()).map(|_| ()))
+    }
+
+    pub fn yaml_to_toml(yaml: Yaml) -> Toml {
+        match yaml {
+            Yaml::String(s) => Toml::String(s),
+            Yaml::Integer(i) => Toml::Integer(i),
+            Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
+            Yaml::Boolean(b) => Toml::Boolean(b),
+            Yaml::Array(a) => Toml::Array(a.into_iter().map(yaml_to_toml).collect()),
+            Yaml::Hash(h) => {
+                Toml::Table(h.into_iter()
+                    .map(|(k, v)| (String::from(k.as_str().unwrap()), yaml_to_toml(v)))
+                    .collect())
+            }
+            Yaml::Alias(..) => unimplemented!(),
+            Yaml::Null => Toml::Table(TomlTable::new()),
+            Yaml::BadValue => panic!(),
+        }
+    }
+
+    pub fn process_template(path: &Path) -> Yaml {
+        let raw_yaml = read_file(path).map_err(|err| panic!("cannot read from the given template path `{:?}`: {}", path, err)).unwrap();
+        YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
+    }
 }
 
+// TODO: -V print version
+// TODO: --color WHEN warning message
+// TODO: execute cargo subcommand upon completion (if provided)
 fn main() {
-    let opts = Options::from_args();
-    if !opts.show_usage {
-        if opts.verbosity != Verbosity::Quiet {
-            println!("  Generating new Cargo manifest");
-        }
-        if opts.verbosity == Verbosity::Verbose {
-            println!("     Reading YAML from `{}`", opts.template_path)
-        }
-        let yaml = process_template(&opts.template_path);
-        let toml = yaml_to_toml(yaml);
-        let raw_toml = format!("# Auto-generated from `{}`\n{}", opts.template_path, toml);
-        if opts.verbosity == Verbosity::Verbose {
-            println!("     Writing TOML to `{}`", opts.manifest_path);
-        }
-        write_file(&opts.manifest_path, &raw_toml)
-            .map_err(|err| {
-                panic!("cannot write to the given manifest output path `{}`: {}",
-                       opts.manifest_path,
-                       err)
-            })
-            .unwrap();
-    } else {
-        println!("{}", include_str!("../usage.txt"));
-    }
+    let args: opt::Args = docopt::Docopt::new(USAGE).expect("new(..) failed").decode().unwrap_or_else(|e| { println!("{}", e); std::process::exit(1); });
+    println!("{:?}", args);
+    let manifest_path = args.manifest_path();
+    let template_path = args.template_path();
+    // let color = args.color().is_enabled();
+    let verb = args.verbosity();
+
+    verb.if_normal(format_args!("  Generating new Cargo manifest"));
+    verb.if_verbose(format_args!("     Reading YAML from {:?}", template_path));
+    let yaml = gen::process_template(template_path.as_path());
+    let raw_toml = format!("# Auto-generated from {:?}\n{}", template_path, gen::yaml_to_toml(yaml));
+    verb.if_verbose(format_args!("     Writing TOML to {:?}", manifest_path));
+    gen::write_file(manifest_path.as_path(), &raw_toml).map_err(|err| panic!("cannot write to the given manifest output path {:?}: {}", manifest_path, err)).unwrap();
+
+    let sub_argv = args.sub_argv();
 }
