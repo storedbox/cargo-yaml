@@ -43,11 +43,8 @@ mod opt {
 
     impl Args {
         pub fn sub_argv(&self) -> Vec<String> {
-            // TODO: Locate cargo's executable using our ppid rather than the PATH
-            // TODO: When called by cargo what's up with all the cmdline args? Use argv[0]
-            //       rather than the above method of location if possible
             if let Some(ref cmd) = self.arg_command {
-                let mut argv = vec!["cargo".to_string(), cmd.clone()];
+                let mut argv = vec![cmd.clone()];
                 argv.append(&mut self.arg_args.to_vec());
                 argv
             } else {
@@ -199,7 +196,6 @@ fn version() -> String {
         .to_string()
 }
 
-// TODO: execute cargo subcommand upon completion (if provided)
 fn main() {
     let mut stderr = std::io::stderr();
 
@@ -243,5 +239,16 @@ fn main() {
         })
         .unwrap();
 
-    let sub_argv = args.sub_argv();
+    let argv = args.sub_argv();
+    if !argv.is_empty() {
+        // TODO: Locate cargo's executable using our ppid or argv rather than the PATH
+        let exit_code = match std::process::Command::new("cargo").args(&argv).status() {
+            Ok(status) => status.code().unwrap_or(-1),
+            Err(err) => {
+                let _ = writeln!(stderr, "cargo-yaml: could not execute 'cargo' -- {}", err);
+                1
+            }
+        };
+        std::process::exit(exit_code);
+    }
 }
