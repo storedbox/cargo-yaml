@@ -3,6 +3,8 @@ extern crate rustc_serialize;
 extern crate toml;
 extern crate yaml_rust;
 
+const MANIFEST: &'static str = include_str!("../Cargo.yaml");
+
 // TODO: Fix arg detection at runtime
 const USAGE: &'static str = "
 cargo-yaml
@@ -35,7 +37,7 @@ mod opt {
         arg_color: Option<Color>,
         flag_quiet: bool,
         flag_verbose: bool,
-        flag_version: bool,
+        pub flag_version: bool,
     }
 
     impl Args {
@@ -169,11 +171,25 @@ mod gen {
     }
 }
 
-// TODO: -V print version
+fn version() -> String {
+    use yaml_rust::{Yaml, YamlLoader};
+    let docs = YamlLoader::load_from_str(MANIFEST).unwrap();
+    docs[0]
+        .as_hash()
+        .and_then(|root| root.get(&Yaml::from_str("package")).and_then(|n| n.as_hash()))
+        .and_then(|package| package.get(&Yaml::from_str("version")).and_then(|n| n.as_str()))
+        .unwrap()
+        .to_string()
+}
+
 // TODO: --color WHEN warning message
 // TODO: execute cargo subcommand upon completion (if provided)
 fn main() {
     let args: opt::Args = docopt::Docopt::new(USAGE).expect("new(..) failed").decode().unwrap_or_else(|e| { println!("{}", e); std::process::exit(1); });
+    if args.flag_version {
+        println!("cargo-yaml v{}", version());
+        return;
+    }
     println!("{:?}", args);
     let manifest_path = args.manifest_path();
     let template_path = args.template_path();
