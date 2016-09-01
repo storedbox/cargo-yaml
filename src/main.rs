@@ -5,7 +5,6 @@ extern crate yaml_rust;
 
 const MANIFEST: &'static str = include_str!("../Cargo.yaml");
 
-// TODO: Fix arg detection at runtime
 const USAGE: &'static str = "
 cargo-yaml
 David Huffman <storedbox@outlook.com>
@@ -16,12 +15,12 @@ Usage:
 
 Options:
     -h, --help                Display this message
-    -m, --manifest-path PATH  Output path for the generated manifest file
-    -t, --template-path PATH  Path to the YAML template; can be `-` for stdin
+    -o, --manifest-path PATH  Output path for the generated manifest file
+    -i, --template-path PATH  Path to the YAML template; can be `-` for stdin
     -V, --version             Print version info and exit
     -v, --verbose             Use verbose output
     -q, --quiet               No output printed to stdout
-    --color WHEN              Coloring: auto, always, never
+    -c, --color WHEN          Coloring: auto, always, never
 ";
 
 mod opt {
@@ -32,9 +31,9 @@ mod opt {
     pub struct Args {
         arg_args: Vec<String>,
         arg_command: Option<String>,
-        arg_manifest_path: Option<String>,
-        arg_template_path: Option<String>,
-        arg_color: Option<Color>,
+        flag_manifest_path: Option<String>,
+        flag_template_path: Option<String>,
+        flag_color: Option<Color>,
         flag_quiet: bool,
         flag_verbose: bool,
         pub flag_version: bool,
@@ -55,20 +54,20 @@ mod opt {
         }
 
         pub fn manifest_path(&self) -> PathBuf {
-            PathBuf::from(self.arg_manifest_path
+            PathBuf::from(self.flag_manifest_path
                 .clone()
                 .unwrap_or_else(|| "Cargo.toml".to_string()))
         }
 
         pub fn template_path(&self) -> PathBuf {
             // TODO: Allow for Cargo.yml auto-detection and possibly other variations
-            PathBuf::from(self.arg_template_path
+            PathBuf::from(self.flag_template_path
                 .clone()
                 .unwrap_or_else(|| "Cargo.yaml".to_string()))
         }
 
         pub fn color(&self) -> Color {
-            self.arg_color.clone().unwrap_or_default()
+            self.flag_color.clone().unwrap_or_default()
         }
 
         pub fn verbosity(&self) -> Verbosity {
