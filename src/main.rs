@@ -55,12 +55,16 @@ mod opt {
         }
 
         pub fn manifest_path(&self) -> PathBuf {
-            PathBuf::from(self.arg_manifest_path.clone().unwrap_or_else(|| "Cargo.toml".to_string()))
+            PathBuf::from(self.arg_manifest_path
+                .clone()
+                .unwrap_or_else(|| "Cargo.toml".to_string()))
         }
 
         pub fn template_path(&self) -> PathBuf {
             // TODO: Allow for Cargo.yml auto-detection and possibly other variations
-            PathBuf::from(self.arg_template_path.clone().unwrap_or_else(|| "Cargo.yaml".to_string()))
+            PathBuf::from(self.arg_template_path
+                .clone()
+                .unwrap_or_else(|| "Cargo.yaml".to_string()))
         }
 
         pub fn color(&self) -> Color {
@@ -133,8 +137,7 @@ mod gen {
     use std::path::Path;
     use toml::Table as TomlTable;
     use toml::Value as Toml;
-    use yaml_rust::yaml::Yaml;
-    use yaml_rust::YamlLoader;
+    use yaml_rust::{Yaml, YamlLoader};
 
     pub fn read_file(path: &Path) -> io::Result<String> {
         File::open(path).and_then(|mut file| {
@@ -166,7 +169,13 @@ mod gen {
     }
 
     pub fn process_template(path: &Path) -> Yaml {
-        let raw_yaml = read_file(path).map_err(|err| panic!("cannot read from the given template path `{:?}`: {}", path, err)).unwrap();
+        let raw_yaml = read_file(path)
+            .map_err(|err| {
+                panic!("cannot read from the given template path `{:?}`: {}",
+                       path,
+                       err)
+            })
+            .unwrap();
         YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
     }
 }
@@ -185,7 +194,11 @@ fn version() -> String {
 // TODO: --color WHEN warning message
 // TODO: execute cargo subcommand upon completion (if provided)
 fn main() {
-    let args: opt::Args = docopt::Docopt::new(USAGE).expect("new(..) failed").decode().unwrap_or_else(|e| { println!("{}", e); std::process::exit(1); });
+    let args: opt::Args =
+        docopt::Docopt::new(USAGE).expect("new(..) failed").decode().unwrap_or_else(|e| {
+            println!("{}", e);
+            std::process::exit(1);
+        });
     if args.flag_version {
         println!("cargo-yaml v{}", version());
         return;
@@ -199,9 +212,17 @@ fn main() {
     verb.if_normal(format_args!("  Generating new Cargo manifest"));
     verb.if_verbose(format_args!("     Reading YAML from {:?}", template_path));
     let yaml = gen::process_template(template_path.as_path());
-    let raw_toml = format!("# Auto-generated from {:?}\n{}", template_path, gen::yaml_to_toml(yaml));
+    let raw_toml = format!("# Auto-generated from {:?}\n{}",
+                           template_path,
+                           gen::yaml_to_toml(yaml));
     verb.if_verbose(format_args!("     Writing TOML to {:?}", manifest_path));
-    gen::write_file(manifest_path.as_path(), &raw_toml).map_err(|err| panic!("cannot write to the given manifest output path {:?}: {}", manifest_path, err)).unwrap();
+    gen::write_file(manifest_path.as_path(), &raw_toml)
+        .map_err(|err| {
+            panic!("cannot write to the given manifest output path {:?}: {}",
+                   manifest_path,
+                   err)
+        })
+        .unwrap();
 
     let sub_argv = args.sub_argv();
 }
