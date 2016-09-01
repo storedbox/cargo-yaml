@@ -3,6 +3,8 @@ extern crate rustc_serialize;
 extern crate toml;
 extern crate yaml_rust;
 
+use std::io::prelude::*;
+
 const MANIFEST: &'static str = include_str!("../Cargo.yaml");
 
 const USAGE: &'static str = "
@@ -33,7 +35,7 @@ mod opt {
         arg_command: Option<String>,
         flag_manifest_path: Option<String>,
         flag_template_path: Option<String>,
-        flag_color: Option<Color>,
+        pub flag_color: Option<Color>,
         flag_quiet: bool,
         flag_verbose: bool,
         pub flag_version: bool,
@@ -190,7 +192,6 @@ fn version() -> String {
         .to_string()
 }
 
-// TODO: --color WHEN warning message
 // TODO: execute cargo subcommand upon completion (if provided)
 fn main() {
     let args: opt::Args =
@@ -205,8 +206,10 @@ fn main() {
     println!("{:?}", args);
     let manifest_path = args.manifest_path();
     let template_path = args.template_path();
-    // let color = args.color().is_enabled();
     let verb = args.verbosity();
+    if args.flag_color.is_some() {
+        let _ = writeln!(std::io::stderr(), "WARNING: the `--color` option is currently ignored");
+    }
 
     verb.if_normal(format_args!("  Generating new Cargo manifest"));
     verb.if_verbose(format_args!("     Reading YAML from {:?}", template_path));
