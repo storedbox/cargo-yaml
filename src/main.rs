@@ -1,7 +1,7 @@
 extern crate docopt;
 extern crate rustc_serialize;
 extern crate toml;
-extern crate yaml_rust;
+extern crate yaml_rust as yaml;
 
 use std::io::prelude::*;
 
@@ -140,9 +140,8 @@ mod gen {
     use std::fs::File;
     use std::io::{self, Read, Write};
     use std::path::Path;
-    use toml::Table as TomlTable;
-    use toml::Value as Toml;
-    use yaml_rust::{Yaml, YamlLoader};
+    use toml::{Table as TomlTable, Value as Toml};
+    use yaml::{Yaml, YamlLoader};
 
     pub fn read_file(path: &Path) -> io::Result<String> {
         File::open(path).and_then(|mut file| {
@@ -186,12 +185,11 @@ mod gen {
 }
 
 fn version() -> String {
-    use yaml_rust::{Yaml, YamlLoader};
-    let docs = YamlLoader::load_from_str(MANIFEST).unwrap();
+    let docs = yaml::YamlLoader::load_from_str(MANIFEST).unwrap();
     docs[0]
         .as_hash()
-        .and_then(|root| root.get(&Yaml::from_str("package")).and_then(|n| n.as_hash()))
-        .and_then(|package| package.get(&Yaml::from_str("version")).and_then(|n| n.as_str()))
+        .and_then(|root| root.get(&yaml::Yaml::from_str("package")).and_then(|n| n.as_hash()))
+        .and_then(|package| package.get(&yaml::Yaml::from_str("version")).and_then(|n| n.as_str()))
         .unwrap()
         .to_string()
 }
@@ -199,8 +197,11 @@ fn version() -> String {
 fn main() {
     let mut stderr = std::io::stderr();
 
-    let args: opt::Args =
-        docopt::Docopt::new(USAGE).expect("Docopt::new(USAGE) failed").argv(std::env::args().skip(1)).decode().unwrap_or_else(|e| {
+    let args: opt::Args = docopt::Docopt::new(USAGE)
+        .expect("Docopt::new(USAGE) failed")
+        .argv(std::env::args().skip(1))
+        .decode()
+        .unwrap_or_else(|e| {
             println!("{}", e);
             std::process::exit(1);
         });
@@ -208,7 +209,6 @@ fn main() {
         println!("cargo-yaml v{}", version());
         return;
     }
-    println!("{:?}", args);
     let manifest_path = args.manifest_path();
     let template_path = args.template_path();
     let verb = args.verbosity();
