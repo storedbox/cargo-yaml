@@ -34,7 +34,7 @@ mod opt {
         arg_args: Vec<String>,
         arg_command: Option<String>,
         flag_manifest_path: Option<String>,
-        flag_template_path: Option<String>,
+        pub flag_template_path: Option<String>,
         pub flag_color: Option<Color>,
         flag_quiet: bool,
         flag_verbose: bool,
@@ -61,11 +61,18 @@ mod opt {
                 .unwrap_or_else(|| "Cargo.toml".to_string()))
         }
 
-        pub fn template_path(&self) -> PathBuf {
-            // TODO: Allow for Cargo.yml auto-detection and possibly other variations
-            PathBuf::from(self.flag_template_path
-                .clone()
-                .unwrap_or_else(|| "Cargo.yaml".to_string()))
+        pub fn template_path(&self) -> Option<PathBuf> {
+            if let Some(ref path) = self.flag_template_path {
+                Some(PathBuf::from(path))
+            } else {
+                for name in &["Cargo.yaml", "Cargo.yml"] {
+                    let path = PathBuf::from(name);
+                    if path.as_path().exists() {
+                        return Some(path);
+                    }
+                }
+                None
+            }
         }
 
         pub fn color(&self) -> Color {
@@ -208,14 +215,24 @@ fn main() {
     let template_path = args.template_path();
     let verb = args.verbosity();
     if args.flag_color.is_some() {
-        let _ = writeln!(std::io::stderr(), "WARNING: the `--color` option is currently ignored");
+        let _ = writeln!(std::io::stderr(),
+                         "WARNING: the `--color` option is currently ignored");
     }
 
     verb.if_normal(format_args!("  Generating new Cargo manifest"));
     verb.if_verbose(format_args!("     Reading YAML from {:?}", template_path));
-    let yaml = gen::process_template(template_path.as_path());
+    let yaml = if let Some(ref path) = template_path {
+        gen::process_template(path)
+    } else {
+        let mut stderr = std::io::stderr();
+        let _ = writeln!(stderr,
+                         "cargo-yaml: there is no file named 'Cargo.yaml' or 'Cargo.yml' in the \
+                          current directory");
+        let _ = writeln!(stderr, "Try 'cargo yaml --help' for more information.");
+        std::process::exit(1);
+    };
     let raw_toml = format!("# Auto-generated from {:?}\n{}",
-                           template_path,
+                           template_path.unwrap(),
                            gen::yaml_to_toml(yaml));
     verb.if_verbose(format_args!("     Writing TOML to {:?}", manifest_path));
     gen::write_file(manifest_path.as_path(), &raw_toml)
