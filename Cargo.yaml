@@ -12,12 +12,9 @@ package:
   description: Drop-in Cargo subcommand to generate a Cargo.toml manifest from an YAML template.
   keywords:
   - cargo
-  - file
-  - generate
   - generator
   - manifest
   - subcommand
-  - toml
   - yaml
 dependencies:
   docopt: '0.6.83'
