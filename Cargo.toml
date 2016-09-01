@@ -13,10 +13,9 @@ homepage = "https://gitlab.com/storedbox/cargo-yaml/"
 keywords = ["cargo", "file", "generate", "generator", "manifest", "subcommand", "toml", "yaml"]
 license = "MIT/Apache-2.0"
 name = "cargo-yaml"
-publish = false
 readme = "README.md"
 repository = "https://gitlab.com/storedbox/cargo-yaml.git"
-version = "3.0.0-devel"
+version = "3.0.0"
 
 [profile]
 
