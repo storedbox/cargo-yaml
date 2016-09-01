@@ -34,7 +34,7 @@ mod opt {
         arg_template_path: Option<String>,
         arg_color: Option<Color>,
         flag_quiet: bool,
-        flag_verbose: u32,
+        flag_verbose: bool,
         flag_version: bool,
     }
 
@@ -68,8 +68,8 @@ mod opt {
         pub fn verbosity(&self) -> Verbosity {
             match (self.flag_quiet, self.flag_verbose) {
                 (true, _) => Verbosity::Quiet,
-                (false, 0) => Verbosity::Normal,
-                (false, _) => Verbosity::Verbose,
+                (false, false) => Verbosity::Normal,
+                (_, true) => Verbosity::Verbose,
             }
         }
     }
