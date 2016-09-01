@@ -200,7 +200,7 @@ fn main() {
     let mut stderr = std::io::stderr();
 
     let args: opt::Args =
-        docopt::Docopt::new(USAGE).expect("new(..) failed").decode().unwrap_or_else(|e| {
+        docopt::Docopt::new(USAGE).expect("Docopt::new(USAGE) failed").argv(std::env::args().skip(1)).decode().unwrap_or_else(|e| {
             println!("{}", e);
             std::process::exit(1);
         });
