@@ -201,6 +201,8 @@ fn version() -> String {
 
 // TODO: execute cargo subcommand upon completion (if provided)
 fn main() {
+    let mut stderr = std::io::stderr();
+
     let args: opt::Args =
         docopt::Docopt::new(USAGE).expect("new(..) failed").decode().unwrap_or_else(|e| {
             println!("{}", e);
@@ -215,8 +217,7 @@ fn main() {
     let template_path = args.template_path();
     let verb = args.verbosity();
     if args.flag_color.is_some() {
-        let _ = writeln!(std::io::stderr(),
-                         "WARNING: the `--color` option is currently ignored");
+        let _ = writeln!(stderr, "WARNING: the `--color` option is currently ignored");
     }
 
     verb.if_normal(format_args!("  Generating new Cargo manifest"));
@@ -224,7 +225,6 @@ fn main() {
     let yaml = if let Some(ref path) = template_path {
         gen::process_template(path)
     } else {
-        let mut stderr = std::io::stderr();
         let _ = writeln!(stderr,
                          "cargo-yaml: there is no file named 'Cargo.yaml' or 'Cargo.yml' in the \
                           current directory");
