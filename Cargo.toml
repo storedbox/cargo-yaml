@@ -1,10 +1,10 @@
 # Auto-generated from "Cargo.yaml"
 
 [dependencies]
-docopt = "*"
-rustc-serialize = "*"
-toml = "*"
-yaml-rust = "*"
+docopt = "0.6.83"
+rustc-serialize = "0.3.19"
+toml = "0.2.0"
+yaml-rust = "0.3.3"
 
 [package]
 authors = ["David Huffman <storedbox@outlook.com>"]
