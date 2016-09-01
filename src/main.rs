@@ -1,122 +1,254 @@
-// allowed by default
-#![allow(box_pointers)]
-#![warn(fat_ptr_transmutes)]
-#![warn(missing_copy_implementations)]
-#![warn(missing_debug_implementations)]
-#![allow(missing_docs)]
-#![warn(trivial_casts)]
-#![warn(trivial_numeric_casts)]
-#![allow(unsafe_code)]
-#![warn(unstable_features)]
-#![allow(unused_extern_crates)]
-#![warn(unused_import_braces)]
-#![warn(unused_qualifications)]
-#![warn(unused_results)]
-#![warn(variant_size_differences)]
-
-// lint-group "unused"
-#![allow(dead_code)]
-#![warn(path_statements)]
-#![warn(unreachable_code)]
-#![allow(unused_assignments)]
-#![warn(unused_attributes)]
-#![allow(unused_imports)]
-#![warn(unused_must_use)]
-#![warn(unused_mut)]
-#![warn(unused_unsafe)]
-#![allow(unused_variables)]
-
-#[macro_use]
-extern crate log;
-
-extern crate term;
+extern crate docopt;
+extern crate rustc_serialize;
 extern crate toml;
-extern crate yaml_rust;
+extern crate yaml_rust as yaml;
 
-use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::prelude::*;
 
-use toml::Value as Toml;
-use yaml_rust::YamlLoader;
-use yaml_rust::yaml::Yaml;
+const MANIFEST: &'static str = include_str!("../Cargo.yaml");
 
-mod logger;
-mod opts;
+const USAGE: &'static str = "
+cargo-yaml
+David Huffman <storedbox@outlook.com>
+Generate a Cargo.toml manifest from an YAML template
 
-use opts::{Options, Verbosity};
+Usage:
+    cargo-yaml [options] [--] [<command> [<args>...]]
 
-fn read_file(path: &str) -> io::Result<String> {
-    debug!("Reading contents of `{}` into memory", path);
-    File::open(path).and_then(|mut file| {
-        let mut content = String::new();
-        file.read_to_string(&mut content).map(|_| content)
-    })
-}
+Options:
+    -h, --help                Display this message
+    -o, --manifest-path PATH  Output path for the generated manifest file
+    -i, --template-path PATH  Path to the YAML template; can be `-` for stdin
+    -V, --version             Print version info and exit
+    -v, --verbose             Use verbose output
+    -q, --quiet               No output printed to stdout
+    -c, --color WHEN          Coloring: auto, always, never
+";
 
-fn write_file(path: &str, content: &str) -> io::Result<()> {
-    debug!("Writing {} characters to `{}`", content.len(), path);
-    File::create(path).and_then(|mut file| file.write_all(content.as_bytes()).map(|_| ()))
-}
+mod opt {
+    use std::fmt::Arguments as FmtArgs;
+    use std::path::PathBuf;
 
-fn map_yaml_to_toml(yaml: Yaml) -> Toml {
-    trace!("Mapping template field `Yaml::{:?}`", yaml);
-    match yaml {
-        Yaml::String(s) => Toml::String(s),
-        Yaml::Integer(i) => Toml::Integer(i),
-        Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
-        Yaml::Boolean(b) => Toml::Boolean(b),
-        Yaml::Array(a) => Toml::Array(a.into_iter().map(map_yaml_to_toml).collect()),
-        Yaml::Hash(h) => {
-            Toml::Table(h.into_iter()
-                .map(|(k, v)| (String::from(k.as_str().unwrap()), map_yaml_to_toml(v)))
-                .collect())
+    #[derive(Debug, RustcDecodable)]
+    pub struct Args {
+        arg_args: Vec<String>,
+        arg_command: Option<String>,
+        flag_manifest_path: Option<String>,
+        pub flag_template_path: Option<String>,
+        pub flag_color: Option<Color>,
+        flag_quiet: bool,
+        flag_verbose: bool,
+        pub flag_version: bool,
+    }
+
+    impl Args {
+        pub fn sub_argv(&self) -> Vec<String> {
+            if let Some(ref cmd) = self.arg_command {
+                let mut argv = vec![cmd.clone()];
+                argv.append(&mut self.arg_args.to_vec());
+                argv
+            } else {
+                vec![]
+            }
         }
-        Yaml::Alias(..) => {
-            error!("YAML aliases are not supported");
-            panic!()
+
+        pub fn manifest_path(&self) -> PathBuf {
+            PathBuf::from(self.flag_manifest_path
+                .clone()
+                .unwrap_or_else(|| "Cargo.toml".to_string()))
         }
-        Yaml::Null => Toml::Table(toml::Table::new()),
-        Yaml::BadValue => {
-            error!("Found malformed YAML construct");
-            panic!()
+
+        pub fn template_path(&self) -> Option<PathBuf> {
+            if let Some(ref path) = self.flag_template_path {
+                Some(PathBuf::from(path))
+            } else {
+                for name in &["Cargo.yaml", "Cargo.yml"] {
+                    let path = PathBuf::from(name);
+                    if path.as_path().exists() {
+                        return Some(path);
+                    }
+                }
+                None
+            }
+        }
+
+        pub fn color(&self) -> Color {
+            self.flag_color.clone().unwrap_or_default()
+        }
+
+        pub fn verbosity(&self) -> Verbosity {
+            match (self.flag_quiet, self.flag_verbose) {
+                (true, _) => Verbosity::Quiet,
+                (false, false) => Verbosity::Normal,
+                (_, true) => Verbosity::Verbose,
+            }
+        }
+    }
+
+    #[derive(Clone, Debug, RustcDecodable)]
+    pub enum Color {
+        Auto,
+        Always,
+        Never,
+    }
+
+    impl Color {
+        pub fn is_enabled(&self) -> bool {
+            use self::Color::*;
+            match self {
+                &Auto | &Always => true,
+                &Never => false,
+            }
+        }
+    }
+
+    impl Default for Color {
+        fn default() -> Self {
+            Color::Auto
+        }
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub enum Verbosity {
+        Quiet,
+        Normal,
+        Verbose,
+    }
+
+    impl Verbosity {
+        pub fn if_normal(&self, args: FmtArgs) {
+            if self != &Verbosity::Quiet {
+                println!("{}", args);
+            }
+        }
+
+        pub fn if_verbose(&self, args: FmtArgs) {
+            if self == &Verbosity::Verbose {
+                println!("{}", args);
+            }
+        }
+    }
+
+    impl Default for Verbosity {
+        fn default() -> Self {
+            Verbosity::Normal
         }
     }
 }
 
-fn process_template(path: &str) -> Yaml {
-    let raw_yaml = read_file(path)
-        .map_err(|err| {
-            error!("Cannot read template file `{}`: {}", path, err);
-            panic!()
+mod gen {
+    use std::fs::File;
+    use std::io::{self, Read, Write};
+    use std::path::Path;
+    use toml::{Table as TomlTable, Value as Toml};
+    use yaml::{Yaml, YamlLoader};
+
+    pub fn read_file(path: &Path) -> io::Result<String> {
+        File::open(path).and_then(|mut file| {
+            let mut content = String::new();
+            file.read_to_string(&mut content).map(|_| content)
         })
-        .unwrap();
-    debug!("Attempting deserialization of data as an YAML AST");
-    YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
+    }
+
+    pub fn write_file(path: &Path, content: &str) -> io::Result<()> {
+        File::create(path).and_then(|mut file| file.write_all(content.as_bytes()).map(|_| ()))
+    }
+
+    pub fn yaml_to_toml(yaml: Yaml) -> Toml {
+        match yaml {
+            Yaml::String(s) => Toml::String(s),
+            Yaml::Integer(i) => Toml::Integer(i),
+            Yaml::Real(f) => Toml::Float(f.parse::<f64>().unwrap()),
+            Yaml::Boolean(b) => Toml::Boolean(b),
+            Yaml::Array(a) => Toml::Array(a.into_iter().map(yaml_to_toml).collect()),
+            Yaml::Hash(h) => {
+                Toml::Table(h.into_iter()
+                    .map(|(k, v)| (String::from(k.as_str().unwrap()), yaml_to_toml(v)))
+                    .collect())
+            }
+            Yaml::Alias(..) => unimplemented!(),
+            Yaml::Null => Toml::Table(TomlTable::new()),
+            Yaml::BadValue => panic!(),
+        }
+    }
+
+    pub fn process_template(path: &Path) -> Yaml {
+        let raw_yaml = read_file(path)
+            .map_err(|err| {
+                panic!("cannot read from the given template path `{:?}`: {}",
+                       path,
+                       err)
+            })
+            .unwrap();
+        YamlLoader::load_from_str(&raw_yaml).unwrap()[0].clone()
+    }
+}
+
+fn version() -> String {
+    let docs = yaml::YamlLoader::load_from_str(MANIFEST).unwrap();
+    docs[0]
+        .as_hash()
+        .and_then(|root| root.get(&yaml::Yaml::from_str("package")).and_then(|n| n.as_hash()))
+        .and_then(|package| package.get(&yaml::Yaml::from_str("version")).and_then(|n| n.as_str()))
+        .unwrap()
+        .to_string()
 }
 
 fn main() {
-    let opts = Options::from_args();
-    logger::init(match opts.verbosity {
-        Verbosity::Normal => log::LogLevelFilter::Info,
-        Verbosity::Verbose => log::LogLevelFilter::Debug,
-        Verbosity::Quiet => log::LogLevelFilter::Error,
-    }).unwrap();
-    if !opts.show_usage {
-        info!("Generating new Cargo manifest");
-        let yaml = process_template(&opts.template_path);
-        debug!("Mapping YAML constructs to TOML equivilents");
-        let toml = map_yaml_to_toml(yaml);
-        let raw_toml = format!("# Auto-generated from `{}`\n{}", opts.template_path, toml);
-        debug!("Serializing TOML AST to plaintext TOML");
-        write_file(&opts.manifest_path, &raw_toml)
-            .map_err(|err| {
-                error!("Cannot write to manifest file `{}`: {}",
-                       opts.manifest_path,
-                       err);
-                panic!()
-            })
-            .unwrap();
+    let mut stderr = std::io::stderr();
+
+    let args: opt::Args = docopt::Docopt::new(USAGE)
+        .expect("Docopt::new(USAGE) failed")
+        .argv(std::env::args().skip(1))
+        .decode()
+        .unwrap_or_else(|e| {
+            println!("{}", e);
+            std::process::exit(1);
+        });
+    if args.flag_version {
+        println!("cargo-yaml v{}", version());
+        return;
+    }
+    let manifest_path = args.manifest_path();
+    let template_path = args.template_path();
+    let verb = args.verbosity();
+    if args.flag_color.is_some() {
+        let _ = writeln!(stderr, "WARNING: the `--color` option is currently ignored");
+    }
+
+    verb.if_normal(format_args!("  Generating new Cargo manifest"));
+    verb.if_verbose(format_args!("     Reading YAML from {:?}", template_path));
+    let yaml = if let Some(ref path) = template_path {
+        gen::process_template(path)
     } else {
-        println!("{}", include_str!("../usage.txt"));
+        let _ = writeln!(stderr,
+                         "cargo-yaml: there is no file named 'Cargo.yaml' or 'Cargo.yml' in the \
+                          current directory");
+        let _ = writeln!(stderr, "Try 'cargo yaml --help' for more information.");
+        std::process::exit(1);
+    };
+    let raw_toml = format!("# Auto-generated from {:?}\n{}",
+                           template_path.unwrap(),
+                           gen::yaml_to_toml(yaml));
+    verb.if_verbose(format_args!("     Writing TOML to {:?}", manifest_path));
+    gen::write_file(manifest_path.as_path(), &raw_toml)
+        .map_err(|err| {
+            panic!("cannot write to the given manifest output path {:?}: {}",
+                   manifest_path,
+                   err)
+        })
+        .unwrap();
+
+    let argv = args.sub_argv();
+    if !argv.is_empty() {
+        // TODO: Locate cargo's executable using our ppid or argv rather than the PATH
+        let exit_code = match std::process::Command::new("cargo").args(&argv).status() {
+            Ok(status) => status.code().unwrap_or(-1),
+            Err(err) => {
+                let _ = writeln!(stderr, "cargo-yaml: could not execute 'cargo' -- {}", err);
+                1
+            }
+        };
+        std::process::exit(exit_code);
     }
 }
