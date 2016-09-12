@@ -9,12 +9,12 @@ yaml-rust = "0.3.3"
 [package]
 authors = ["David Huffman <storedbox@outlook.com>"]
 description = "Drop-in Cargo subcommand to generate a Cargo.toml manifest from an YAML template."
-homepage = "https://gitlab.com/storedbox/cargo-yaml/"
+homepage = "https://github.com/storedbox/cargo-yaml/"
 keywords = ["cargo", "generator", "manifest", "subcommand", "yaml"]
 license = "MIT/Apache-2.0"
 name = "cargo-yaml"
 readme = "README.md"
-repository = "https://gitlab.com/storedbox/cargo-yaml.git"
+repository = "https://github.com/storedbox/cargo-yaml.git"
 version = "3.0.0"
 
 [profile]
