@@ -1,4 +1,4 @@
-image: storedbox/rust:nightly
+image: quay.io/storedbox/rust
 
 stages:
 - build
