@@ -1,18 +1,224 @@
-image: quay.io/storedbox/rust
+# Environment
+########################################
 
 stages:
 - build
+- test
+- pages # There's something about generating empty documentation that amuses me
+- deploy
 
-Debug Build:
+cache:
+  key: $CI_BUILD_REF
+  paths:
+  - Cargo.lock # Could cause issues if cargo on rust-{beta,nightly} changes something horribly
+  - $CARGO_HOME
+
+variables:
+  CARGO_HOME: 'target/.cargo' # Can't cache all our crate downloads if they aren't in our build context
+  RUST_BACKTRACE: '1'
+
+before_script:
+- rustc --version
+- cargo --version
+
+
+# Template Shards
+########################################
+
+.artifacts:shared: &artifacts-shared
+  name: ${CI_PROJECT_NAME}-${CI_BUILD_REF_NAME}+${CI_BUILD_NAME}
+  expire_in: 2 months
+
+.build:shared: &build-shared
   stage: build
-  tags:
-  - docker
+
+.test:shared: &test-shared
+  stage: test
+  allow_failure: true # Bad, I know
+
+
+# Cargo Templates
+########################################
+
+.cargo:bench: &cargo-bench
+  <<: *test-shared
+  when: manual
+  script:
+  - cargo bench --verbose
+
+.cargo:build:debug: &cargo-build-debug
+  <<: *build-shared
+  artifacts:
+    <<: *artifacts-shared
+    paths:
+    - target/debug/
   script:
   - cargo build --verbose
 
-Release Build:
-  stage: build
+.cargo:build:release: &cargo-build-release
+  <<: *build-shared
+  artifacts:
+    <<: *artifacts-shared
+    paths:
+    - target/release/
+  script:
+  - cargo build --release --verbose
+
+.cargo:test:debug: &cargo-test-debug
+  <<: *test-shared
+  script:
+  - cargo test --no-fail-fast --verbose
+
+.cargo:test:release: &cargo-test-release
+  <<: *test-shared
+  script:
+  - cargo test --no-fail-fast --release --verbose
+
+
+# Rust Toolchain Templates
+########################################
+
+.use:rust: &use-rust
+  image: quay.io/storedbox/rust:stable
   tags:
   - docker
+
+.use:rust:beta: &use-rust-beta
+  image: quay.io/storedbox/rust:beta
+  tags:
+  - docker
+
+.use:rust:nightly: &use-rust-nightly
+  image: quay.io/storedbox/rust:nightly
+  tags:
+  - docker
+
+
+# Stage: build
+########################################
+
+# FIXME: Without a preparation stage, we build our cache six times and discard it five
+
+debug:build:
+  <<: *use-rust
+  <<: *cargo-build-debug
+
+debug:build:rust-beta:
+  <<: *use-rust-beta
+  <<: *cargo-build-debug
+
+debug:build:rust-nightly:
+  <<: *use-rust-nightly
+  <<: *cargo-build-debug
+
+release:build:
+  <<: *use-rust
+  <<: *cargo-build-release
+
+release:build:rust-beta:
+  <<: *use-rust-beta
+  <<: *cargo-build-release
+
+release:build:rust-nightly:
+  <<: *use-rust-nightly
+  <<: *cargo-build-release
+
+
+# Stage: test
+########################################
+
+debug:test:
+  <<: *use-rust
+  <<: *cargo-test-debug
+  dependencies:
+  - debug:build
+
+debug:test:rust-beta:
+  <<: *use-rust-beta
+  <<: *cargo-test-debug
+  dependencies:
+  - debug:build:rust-beta
+
+debug:test:rust-nightly:
+  <<: *use-rust-nightly
+  <<: *cargo-test-debug
+  dependencies:
+  - debug:build:rust-nightly
+
+release:test:
+  <<: *use-rust
+  <<: *cargo-test-release
+  dependencies:
+  - release:build
+
+release:test:rust-beta:
+  <<: *use-rust-beta
+  <<: *cargo-test-release
+  dependencies:
+  - release:build:rust-beta
+
+release:test:rust-nightly:
+  <<: *use-rust-nightly
+  <<: *cargo-test-release
+  dependencies:
+  - release:build:rust-nightly
+
+
+# Stage: bench
+########################################
+
+release:bench:
+  <<: *use-rust
+  <<: *cargo-bench
+  dependencies:
+  - release:build
+
+release:bench:rust-beta:
+  <<: *use-rust-beta
+  <<: *cargo-bench
+  dependencies:
+  - release:build:rust-beta
+
+release:bench:rust-nightly:
+  <<: *use-rust-nightly
+  <<: *cargo-bench
+  dependencies:
+  - release:build:rust-nightly
+
+
+# Stage: pages
+########################################
+
+pages:
+  <<: *use-rust
+  stage: pages
+  dependencies:
+  - release:build
+  only:
+  - master
+  artifacts:
+    <<: *artifacts-shared
+    paths:
+    - public/
   script:
-  - cargo build --verbose --release
+  - cargo doc --release
+  - mv target/doc/ public
+  - echo '<meta http-equiv="refresh" content="0; url=cargo_yaml">' >public/index.html
+
+
+# Stage: deploy
+########################################
+
+crate:deploy:
+  <<: *use-rust
+  stage: deploy
+  dependencies: []
+  only:
+  - master
+  when: manual
+  artifacts:
+    <<: *artifacts-shared
+    paths:
+    - target/package/
+  script:
+  - cargo publish --token="$CRATES_IO_TOKEN"
