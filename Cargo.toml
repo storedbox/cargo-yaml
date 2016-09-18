@@ -1,5 +1,4 @@
 # Auto-generated from "Cargo.yaml"
-
 [dependencies]
 docopt = "0.6.83"
 rustc-serialize = "0.3.19"
@@ -18,7 +17,6 @@ repository = "https://github.com/storedbox/cargo-yaml.git"
 version = "3.0.0"
 
 [profile]
-
 [profile.bench]
 lto = true
 

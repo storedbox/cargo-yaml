@@ -5,8 +5,6 @@ extern crate yaml_rust as yaml;
 
 use std::io::prelude::*;
 
-const MANIFEST: &'static str = include_str!("../Cargo.yaml");
-
 const USAGE: &'static str = "
 cargo-yaml
 David Huffman <storedbox@outlook.com>
@@ -184,16 +182,6 @@ mod gen {
     }
 }
 
-fn version() -> String {
-    let docs = yaml::YamlLoader::load_from_str(MANIFEST).unwrap();
-    docs[0]
-        .as_hash()
-        .and_then(|root| root.get(&yaml::Yaml::from_str("package")).and_then(|n| n.as_hash()))
-        .and_then(|package| package.get(&yaml::Yaml::from_str("version")).and_then(|n| n.as_str()))
-        .unwrap()
-        .to_string()
-}
-
 fn main() {
     let mut stderr = std::io::stderr();
 
@@ -206,7 +194,7 @@ fn main() {
             std::process::exit(1);
         });
     if args.flag_version {
-        println!("cargo-yaml v{}", version());
+        println!("cargo-yaml v{}", env!("CARGO_PKG_VERSION"));
         return;
     }
     let manifest_path = args.manifest_path();
