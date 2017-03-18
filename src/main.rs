@@ -138,7 +138,7 @@ mod gen {
     use std::fs::File;
     use std::io::{self, Read, Write};
     use std::path::Path;
-    use toml::{Table as TomlTable, Value as Toml};
+    use toml::value::{Table as TomlTable, Value as Toml};
     use yaml::{Yaml, YamlLoader};
 
     pub fn read_file(path: &Path) -> io::Result<String> {
